@@ -22,6 +22,8 @@ EOF
     exit 1
 }
 
+SOX="sox -q -e unsigned-integer -b 8 -r 8000 -t raw -"
+
 # The expression
 exp="$1"
 shift
@@ -80,8 +82,8 @@ clang -w "$dir/main.c" -o "$dir/main"
 
 if [ -z "$file" ]; then
     echo "Playing '$exp' for $len seconds"
-    "$dir/main" | aplay 
+    "$dir/main" | $SOX -d
 else
     echo "Writing '$exp' for $len seconds to $file"
-    "$dir/main" | sox -e unsigned-integer -b 8 -r 8000 -t raw - "$file"
+    "$dir/main" | $SOX "$file"
 fi
