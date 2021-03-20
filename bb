@@ -1,15 +1,19 @@
 #!/bin/bash
 
-set -e
+#set -e
 
 function usage() {
     self=$(basename "$0")
 
     cat <<EOF >&2
-Usage: $self EXPRESSION [-l LENGTH] [-o FILE] [-h]
-Play the bytebeat EXPRESSION for LENGTH seconds.
-LENGTH defaults to 16.
-If FILE is supplied, $self outputs a wav file.
+Usage: $self [OPTION...] EXPRESSION
+
+Plays the bytebeat EXPRESSION as audio.
+
+Options:
+  -h,--help           Display this message
+  -l,--length LENGTH  Play audio for LENGTH seconds (default 16)
+  -o,--output FILE    Output autio to FILE as 8-bit WAV
 EOF
 
     if [ -n "$1" ]; then
@@ -24,47 +28,63 @@ EOF
 
 SOX="sox -q -e unsigned-integer -b 8 -r 8000 -t raw -"
 
-# The expression
-exp="$1"
-shift
-
-if [ -z "$exp" ]; then
-    usage "EXPRESSION must be supplied"
-fi
-
 # Default length; 16 seconds
 len=16
 
 # blank means pipe through aplay
 file=""
 
-optstring=":l:o:h"
+# Empty expression
+exp=""
 
-while getopts ${optstring} arg; do
-    case "${arg}" in
-        h)
+while :; do
+    case $1 in
+        -h|--help)
             usage
             ;;
-        o)
-            file="${OPTARG}"
+        -o|--output)
+            if [ "$2" ]; then
+                file="$2"
+                shift
+            else
+                usage "$1 requires a non-empty option argument"
+            fi
             ;;
-        l)
-            len="${OPTARG}"
+        -l|--length)
+            if [ "$2" ]; then
+                len="$2"
+
+                if ! [[ "$len" =~ ^[0-9]+$ ]]; then
+                    usage "$1 requires an integer argument"
+                fi
+
+                shift
+            else
+                usage "$1 requires a non-empty option argument"
+            fi
             ;;
-        :)
-            usage "Must supply an argument to -$OPTARG"
-            ;;
-        ?)
-            usage "Invalid option: -$OPTARG"
+        *)
+            if [ -z "$exp" ]; then
+                exp="$1"
+            else
+                usage "Unexpected extra argument: $1"
+            fi
             ;;
     esac
+
+    shift
+
+    if [ $# == 0 ]; then
+        break
+    fi
 done
 
-# Ensure len is a number
-if ! [[ "$len" =~ ^[0-9]+$ ]]; then
-    usage "LENGTH must be a number"
+# Check the expression
+if [ -z "$exp" ]; then
+    usage "EXPRESSION must not be empty"
 fi
 
+# Create a temporary folder - clean it up when we exit
 dir=$(mktemp -d)
 trap 'rm -r "$dir"' SIGINT SIGTERM
 
@@ -81,9 +101,7 @@ EOF
 clang -w "$dir/main.c" -o "$dir/main"
 
 if [ -z "$file" ]; then
-    echo "Playing '$exp' for $len seconds"
     "$dir/main" | $SOX -d
 else
-    echo "Writing '$exp' for $len seconds to $file"
     "$dir/main" | $SOX "$file"
 fi
