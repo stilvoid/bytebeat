@@ -1,6 +1,6 @@
 # Bytebeat
 
-A collection of bytebeat tools and tunes.
+A collection of [bytebeat](http://countercomplex.blogspot.com/2011/10/algorithmic-symphonies-from-one-line-of.html) tools and tunes.
 
 ## Usage
 
